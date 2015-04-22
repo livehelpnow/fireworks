@@ -118,6 +118,7 @@ defmodule Fireworks.Channel do
           |> Poison.decode!(keys: :atoms)
 
         task = Task.async(fn -> consume(payload, meta) end)
+        Process.unlink(task.pid)
         timer_ref = :erlang.start_timer(@task_timeout, self(), {:task_timeout, task, tag, redelivered, payload})
         
         {:noreply, %{s | tasks: [{task, timer_ref} | s.tasks]}}
@@ -143,9 +144,13 @@ defmodule Fireworks.Channel do
         {:noreply, s}
       end
 
+      def handle_info({:DOWN, ref, :process, _, {:timeout, info}}, s) do
+        Logger.error "Database timeout"
+        {:noreply, s}
+      end
+
       def handle_info({:timeout, timer_ref, {:task_timeout, %{pid: task_pid, ref: task_ref}, tag, redelivered, payload}}, %{channel: channel} = s) do
         #Basic.reject channel, tag, requeue: not redelivered
-        Process.unlink(task_pid)
         Process.exit(task_pid, :task_timeout)
         {:noreply, s}
       end
