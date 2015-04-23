@@ -40,16 +40,38 @@ defmodule Fireworks.Connection do
   def handle_cast({:register_channel, mod}, s) do
     Logger.debug "Register Channel. State: #{inspect s.state}"
     case s.state do
-      :connected -> mod.connect(s.connection)
+      :connected -> 
+        case mod.connect(s.connection) do
+          {:ok, ch_in, ch_out} ->
+            in_ref = Process.monitor ch_in.pid
+            out_ref = Process.monitor ch_out.pid
+            Logger.debug "Channel Registered: #{inspect {mod, in_ref, out_ref}}"
+            s = %{s | channels: [{mod, in_ref, out_ref} | s.channels]}
+          _ -> Logger.error "Error connecting channel"
+
+        end
       _ -> nil
     end
-    {:noreply, %{s | channels: [mod | s.channels]}}
+    {:noreply, s}
+  end
+
+  def handle_info({:timeout, ref, :reconnect}, s) do
+    Logger.debug "Connection Reconnect"
+    {_, s} = connect(s)
+    {:noreply, s}
   end
 
   def handle_info({:DOWN, ref, :process, _, reason}, s) when reason in [:socket_closed_unexpectedly, :heartbeat_timeout] do
     Logger.debug "Connection Closed"
     {_, s} = connect(s)
     {:noreply, s}
+  end
+
+  #channel went down
+  def handle_info({:DOWN, ref, :process, _, _}, s) do
+    {killed_channels, alive_channels} = Enum.partition(s.channels, fn({mod, in_ref, out_ref} -> ref == in_ref or ref == out_ref) end)
+    Logger.error "Channels Died: #{inspect killed_channels}"
+    {:noreply, %{s | channels: alive_channels}}
   end
 
   defp connect(%{opts: opts} = s) do

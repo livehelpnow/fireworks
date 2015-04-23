@@ -62,8 +62,9 @@ defmodule Fireworks.Channel do
         Logger.debug "Channel Open"
         {:ok, channel_in} = Channel.open(conn)
         {:ok, channel_out} = Channel.open(conn)
+        Logger.debug "Channels: #{inspect channel_in} #{inspect channel_out}"
         config(channel_in)
-        {:reply, :ok, %{s | channel: channel_in, channel_out: channel_out}}
+        {:reply, {:ok, channel_in, channel_out}, %{s | channel: channel_in, channel_out: channel_out}}
       end
 
       def handle_cast({:consume, queue, opts}, s) do
@@ -103,12 +104,14 @@ defmodule Fireworks.Channel do
 
       # Sent by the broker when the consumer is unexpectedly cancelled (such as after a queue deletion)
       def handle_info({:basic_cancel, %{consumer_tag: consumer_tag}}, s) do
-        {:stop, :normal, s}
+        Logger.error "Basic Cancel Called on Channel #{inspect __MODULE__}"
+        {:stop, :normal, %{s | state: :disconnected}}
       end
 
       # Confirmation sent by the broker to the consumer process after a Basic.cancel
       def handle_info({:basic_cancel_ok, %{consumer_tag: consumer_tag}}, s) do
-        {:noreply, s}
+        Logger.error "Basic Cancel OK Called on Channel #{inspect __MODULE__}"
+        {:stop, :normal, %{s | state: :disconnected}}
       end
 
       def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered} = meta}, %{channel: channel} = s) do
@@ -118,18 +121,20 @@ defmodule Fireworks.Channel do
           |> Poison.decode!(keys: :atoms)
 
         task = Task.async(fn -> consume(payload, meta) end)
+        Logger.debug "Task: #{inspect task}"
+
         Process.unlink(task.pid)
         timer_ref = :erlang.start_timer(@task_timeout, self(), {:task_timeout, task, tag, redelivered, payload})
         
-        {:noreply, %{s | tasks: [{task, timer_ref} | s.tasks]}}
+        {:noreply, %{s | tasks: [{task, timer_ref, meta} | s.tasks]}}
       end
 
       def handle_info({task, :ok}, %{tasks: tasks} = s) do
         Logger.debug "Task Finished: #{inspect task}"
         Logger.debug "Tasks: #{inspect tasks}"
-        {finished_tasks, remaining_tasks} = Enum.partition(tasks, fn({%{pid: _, ref: ref}, _}) -> ref == task end)
+        {finished_tasks, remaining_tasks} = Enum.partition(tasks, fn({%{ref: ref}, _, _}) -> ref == task end)
         Logger.debug "Finished Tasks: #{inspect finished_tasks}"
-        Enum.each(finished_tasks, fn({_, timer_ref}) -> 
+        Enum.each(finished_tasks, fn({_, timer_ref, _}) -> 
           :erlang.cancel_timer(timer_ref) 
         end)
         
@@ -141,12 +146,25 @@ defmodule Fireworks.Channel do
       end
 
       def handle_info({:DOWN, ref, :process, _, :task_timeout}, s) do
-        {:noreply, s}
+        Logger.error "Task timeout: "
+        Logger.debug "Ref: #{inspect ref}"
+        {error_tasks, remaining_tasks} = Enum.partition(s.tasks, fn({%{ref: task_ref}, timer_ref, meta}) -> task_ref == ref end)
+        Enum.each(error_tasks, fn({task, timer_ref, meta}) -> 
+          :erlang.cancel_timer(timer_ref)
+          Basic.reject s.channel, meta.delivery_tag, requeue: true
+        end)
+        {:noreply, %{s | tasks: remaining_tasks}}
       end
 
       def handle_info({:DOWN, ref, :process, _, {:timeout, info}}, s) do
         Logger.error "Database timeout"
-        {:noreply, s}
+        Logger.debug "Ref: #{inspect ref}"
+        {error_tasks, remaining_tasks} = Enum.partition(s.tasks, fn({%{ref: task_ref}, timer_ref, meta}) -> task_ref == ref end)
+        Enum.each(error_tasks, fn({task, timer_ref, meta}) -> 
+          :erlang.cancel_timer(timer_ref)
+          Basic.reject s.channel, meta.delivery_tag, requeue: true
+        end)
+        {:noreply, %{s | tasks: remaining_tasks}}
       end
 
       def handle_info({:timeout, timer_ref, {:task_timeout, %{pid: task_pid, ref: task_ref}, tag, redelivered, payload}}, %{channel: channel} = s) do
@@ -155,8 +173,10 @@ defmodule Fireworks.Channel do
         {:noreply, s}
       end
 
-      def handle_info({_, _}, s), do: {:noreply, s}
-
+      def handle_info({_, _} = msg, s) do 
+        Logger.error "Unhandled Message: #{inspect msg}"
+        {:noreply, s}
+      end
     end
   end
 end
