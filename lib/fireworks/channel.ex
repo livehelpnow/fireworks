@@ -62,6 +62,8 @@ defmodule Fireworks.Channel do
         Logger.debug "Channel Open"
         {:ok, channel_in} = Channel.open(conn)
         {:ok, channel_out} = Channel.open(conn)
+        Process.link(channel_in.pid)
+        Process.link(channel_out.pid)
         Logger.debug "Channels: #{inspect channel_in} #{inspect channel_out}"
         config(channel_in)
         {:reply, {:ok, channel_in, channel_out}, %{s | channel: channel_in, channel_out: channel_out}}
@@ -174,7 +176,6 @@ defmodule Fireworks.Channel do
       end
 
       def handle_info({_, _} = msg, s) do 
-        Logger.error "Unhandled Message: #{inspect msg}"
         {:noreply, s}
       end
     end
