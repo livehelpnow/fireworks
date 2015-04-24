@@ -170,6 +170,7 @@ defmodule Fireworks.Channel do
       end
 
       def handle_info({:timeout, timer_ref, {:task_timeout, %{pid: task_pid, ref: task_ref}, tag, redelivered, payload}}, %{channel: channel} = s) do
+        # TODO Investigate why calls to reject were killing GenServer
         #Basic.reject channel, tag, requeue: not redelivered
         Process.exit(task_pid, :task_timeout)
         {:noreply, s}

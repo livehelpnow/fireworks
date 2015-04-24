@@ -27,6 +27,7 @@ defmodule Fireworks.Connection do
     {:ok, %{
       connection: nil, 
       channels: [],
+      registered_channels: [],
       opts: opts,
       state: :disconnected
     }}
@@ -37,6 +38,7 @@ defmodule Fireworks.Connection do
     {:reply, :ok, s}
   end
 
+  # TODO: If channels are registered when disconnected
   def handle_cast({:register_channel, mod}, s) do
     Logger.debug "Register Channel. State: #{inspect s.state}"
     case s.state do
@@ -46,11 +48,11 @@ defmodule Fireworks.Connection do
             in_ref = Process.monitor ch_in.pid
             out_ref = Process.monitor ch_out.pid
             Logger.debug "Channel Registered: #{inspect {mod, in_ref, out_ref}}"
-            s = %{s | channels: [{mod, in_ref, out_ref} | s.channels]}
+            s = %{s | channels: [{mod, in_ref, out_ref} | s.channels], registered_channels: [mod | s.registered_channels]}
           _ -> Logger.error "Error connecting channel"
 
         end
-      _ -> nil
+      _ -> s = %{s | registered_channels: [mod | s.registered_channels]}
     end
     {:noreply, s}
   end
@@ -84,7 +86,7 @@ defmodule Fireworks.Connection do
         Logger.debug "Connected"
         
         # Need to recycle channel mods
-        connect_channels(s.channels, conn)
+        connect_channels(s.registered_channels, conn)
         {:ok, %{s | 
           connection: conn,
           state: :connected
