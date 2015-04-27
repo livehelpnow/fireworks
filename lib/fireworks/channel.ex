@@ -131,7 +131,7 @@ defmodule Fireworks.Channel do
         {:noreply, %{s | tasks: [{task, timer_ref, meta} | s.tasks]}}
       end
 
-      def handle_info({task, :ok}, %{tasks: tasks} = s) do
+      def handle_info({task, _}, %{tasks: tasks} = s) when is_reference(task) do
         Logger.debug "Task Finished: #{inspect task}"
         Logger.debug "Tasks: #{inspect tasks}"
         {finished_tasks, remaining_tasks} = Enum.partition(tasks, fn({%{ref: ref}, _, _}) -> ref == task end)
@@ -176,9 +176,6 @@ defmodule Fireworks.Channel do
         {:noreply, s}
       end
 
-      def handle_info({_, _} = msg, s) do 
-        {:noreply, s}
-      end
     end
   end
 end
