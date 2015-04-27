@@ -63,12 +63,6 @@ defmodule Fireworks.Connection do
     {:noreply, s}
   end
 
-  def handle_info({:DOWN, ref, :process, _, reason}, s) when reason in [:socket_closed_unexpectedly, :heartbeat_timeout] do
-    Logger.debug "Connection Closed"
-    {_, s} = connect(s)
-    {:noreply, s}
-  end
-
   #channel went down
   def handle_info({:DOWN, ref, :process, _, _}, s) do
     {killed_channels, alive_channels} = Enum.partition(s.channels, fn({mod, in_ref, out_ref} -> ref == in_ref or ref == out_ref) end)
@@ -82,7 +76,7 @@ defmodule Fireworks.Connection do
     prefetch_count = opts[:prefetch] || @prefetch_count
     case Connection.open(opts) do
       {:ok, conn} -> 
-        Process.monitor(conn.pid)
+        Process.link(conn.pid)
         Logger.debug "Connected"
         
         # Need to recycle channel mods
