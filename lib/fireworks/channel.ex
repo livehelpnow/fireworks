@@ -1,13 +1,6 @@
 defmodule Fireworks.Channel do
-  defmacro __using__(opts) do
+  defmacro __using__(opts) do  
     quote do
-      use GenServer
-      use Behaviour
-
-      @task_timeout 60_000
-      @behaviour unquote(__MODULE__)
-      #@behaviour Fireworks.Consumer
-
       alias AMQP.Connection
       alias AMQP.Channel
       alias AMQP.Exchange
@@ -15,16 +8,37 @@ defmodule Fireworks.Channel do
       alias AMQP.Basic
       alias AMQP.Confirm
 
-      require Logger
+      unquote(config(opts))
+      unquote(server)
+    end
+  end
 
-      Module.register_attribute(__MODULE__, :otp_app, accumulate: false)
-      Module.put_attribute(__MODULE__, :otp_app, unquote(opts[:otp_app]))
+  defp config(opts) do
+    quote do
+      var!(otp_app) = unquote(opts)[:otp_app] || raise "channel expects :otp_app to be given"
+      var!(config) = Application.get_env(var!(otp_app), __MODULE__)
+    end
+  end
+
+  defp server do
+    quote do
+      use GenServer
+      use Behaviour
+
+      @task_timeout 60_000
+      @behaviour unquote(__MODULE__)
+      @conn_conf var!(config)
+
+      def __connection_config__, do: @conn_conf
+
+      #@behaviour Fireworks.Consumer
+
+      require Logger
 
       defcallback bind(channel :: AMQP.Channel)
 
       def start_link() do
-        conf = Application.get_env(unquote(@otp_app), unquote(__MODULE__))
-        GenServer.start_link(__MODULE__, [conf], name: __MODULE__)
+        GenServer.start_link(__MODULE__, __connection_config__, name: __MODULE__)
       end
 
       def connect(opts) do
@@ -49,6 +63,7 @@ defmodule Fireworks.Channel do
 
       def init(opts) do
         Fireworks.Connection.register_channel(__MODULE__)
+        Logger.debug "Options: #{inspect opts}"   
         {:ok, %{
           channel: nil,
           channel_out: nil,
@@ -58,19 +73,22 @@ defmodule Fireworks.Channel do
         }}
       end
 
-      def handle_call({:connect, conn}, _from, s) do
+      def handle_call({:connect, conn}, _from, %{opts: opts} = s) do
         Logger.debug "Channel Open"
         {:ok, channel_in} = Channel.open(conn)
         {:ok, channel_out} = Channel.open(conn)
         Process.link(channel_in.pid)
         Process.link(channel_out.pid)
         Logger.debug "Channels: #{inspect channel_in} #{inspect channel_out}"
+        prefetch_count = opts[:prefetch] || 50
+        Basic.qos(channel_in, prefetch_count: prefetch_count)
         config(channel_in)
         {:reply, {:ok, channel_in, channel_out}, %{s | channel: channel_in, channel_out: channel_out}}
       end
 
       def handle_cast({:consume, queue, opts}, s) do
         Logger.debug "Consume: #{inspect queue}"
+
         consumers_count = opts[:consumers] || 5
         consumers = Enum.reduce(1..consumers_count, [], fn(_, acc) ->  
           {:ok, _consumer_tag} = Basic.consume(s.channel, queue)
