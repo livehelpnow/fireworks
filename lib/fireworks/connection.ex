@@ -73,7 +73,6 @@ defmodule Fireworks.Connection do
   defp connect(%{opts: opts} = s) do
     Logger.debug "Attempting Connection"
     timeout = opts[:timoeut] || @timeout
-    prefetch_count = opts[:prefetch] || @prefetch_count
     case Connection.open(opts) do
       {:ok, conn} -> 
         Process.link(conn.pid)
