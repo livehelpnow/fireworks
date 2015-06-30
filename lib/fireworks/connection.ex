@@ -25,7 +25,7 @@ defmodule Fireworks.Connection do
 
   def init(opts) do
     {:ok, %{
-      connection: nil, 
+      connection: nil,
       channels: [],
       registered_channels: [],
       opts: opts,
@@ -42,7 +42,7 @@ defmodule Fireworks.Connection do
   def handle_cast({:register_channel, mod}, s) do
     Logger.debug "Register Channel. State: #{inspect s.state}"
     case s.state do
-      :connected -> 
+      :connected ->
         case mod.connect(s.connection) do
           {:ok, ch_in, ch_out} ->
             in_ref = Process.monitor ch_in.pid
@@ -74,17 +74,17 @@ defmodule Fireworks.Connection do
     Logger.debug "Attempting Connection"
     timeout = opts[:timoeut] || @timeout
     case Connection.open(opts) do
-      {:ok, conn} -> 
+      {:ok, conn} ->
         Process.link(conn.pid)
         Logger.debug "Connected"
-        
+
         # Need to recycle channel mods
         connect_channels(s.registered_channels, conn)
-        {:ok, %{s | 
+        {:ok, %{s |
           connection: conn,
           state: :connected
         }}
-      {_, error} -> 
+      {_, error} ->
         Logger.debug "Connection Error"
         reconnect_timer_ref = :erlang.start_timer(timeout, self, :reconnect)
         {:error, %{s | state: :disconnected}}
