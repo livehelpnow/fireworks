@@ -1,4 +1,9 @@
 defmodule Fireworks.Channel do
+  use Behaviour
+
+  defcallback config(channel :: AMQP.Channel)
+  defcallback consume(payload :: map, metadata :: map)
+
   defmacro __using__(opts) do
     quote do
       alias AMQP.Connection
@@ -23,30 +28,19 @@ defmodule Fireworks.Channel do
   defp server do
     quote do
       use GenServer
-      use Behaviour
 
+      @reconnect_after_ms 5_000
       @task_timeout 60_000
-      @behaviour unquote(__MODULE__)
+      @behaviour Fireworks.Channel
       @conn_conf var!(config)
+      @prefetch_count 10
 
       def __connection_config__, do: @conn_conf
 
-      #@behaviour Fireworks.Consumer
-
       require Logger
-
-      defcallback bind(channel :: AMQP.Channel)
 
       def start_link() do
         GenServer.start_link(__MODULE__, __connection_config__, name: __MODULE__)
-      end
-
-      def connect(opts) do
-        GenServer.call(__MODULE__, {:connect, opts})
-      end
-
-      def connect_consumers(queue, opts \\ []) do
-        GenServer.cast(__MODULE__, {:consume, queue, opts})
       end
 
       def ack(tag) do
@@ -62,39 +56,34 @@ defmodule Fireworks.Channel do
       end
 
       def init(opts) do
-        Fireworks.Connection.register_channel(__MODULE__)
-        Logger.debug "Options: #{inspect opts}"
+        send(self, :connect)
         {:ok, %{
           channel: nil,
-          channel_out: nil,
-          consumers: [],
+          consumer_tag: nil,
           tasks: [],
-          opts: opts
+          opts: opts,
+          status: :disconnected
         }}
       end
 
-      def handle_call({:connect, conn}, _from, %{opts: opts} = s) do
-        Logger.debug "Channel Open"
-        {:ok, channel_in} = Channel.open(conn)
-        {:ok, channel_out} = Channel.open(conn)
-        Process.link(channel_in.pid)
-        Process.link(channel_out.pid)
-        Logger.debug "Channels: #{inspect channel_in} #{inspect channel_out}"
-        prefetch_count = opts[:prefetch] || 50
-        Basic.qos(channel_in, prefetch_count: prefetch_count)
-        config(channel_in)
-        {:reply, {:ok, channel_in, channel_out}, %{s | channel: channel_in, channel_out: channel_out}}
-      end
+      def handle_info(:connect, s) do
+        case Fireworks.with_conn(Fireworks.ConnPool, fn conn ->
+            {:ok, chan} = Channel.open(conn)
 
-      def handle_cast({:consume, queue, opts}, s) do
-        Logger.debug "Consume: #{inspect queue}"
-
-        consumers_count = opts[:consumers] || 5
-        consumers = Enum.reduce(1..consumers_count, [], fn(_, acc) ->
-          {:ok, _consumer_tag} = Basic.consume(s.channel, queue)
-          [_consumer_tag | acc]
-        end)
-        {:noreply, %{s | consumers: consumers}}
+            Process.monitor(chan.pid)
+            prefetch_count = s.opts[:prefetch] || @prefetch_count
+            :ok = Basic.qos(chan, prefetch_count: prefetch_count)
+            queue = config(chan)
+            {:ok, consumer_tag} = Basic.consume(chan, queue, self())
+            {:ok, chan, consumer_tag}
+          end) do
+          {:ok, chan, consumer_tag} ->
+            Logger.debug "Connected Channel: #{inspect s.opts}"
+            {:noreply, %{s | channel: chan, consumer_tag: consumer_tag, status: :connected}}
+          {:error, :disconnected} ->
+            :timer.send_after(@reconnect_after_ms, :connect)
+            {:noreply, %{s | channel: nil, consumer_tag: nil, status: :disconnected}}
+        end
       end
 
       def handle_cast({:ack, tag}, %{channel: channel} = s) do
@@ -109,10 +98,10 @@ defmodule Fireworks.Channel do
         {:noreply, s}
       end
 
-      def handle_cast({:publish, exchange, routing_key, payload, opts}, %{channel: channel, channel_out: channel_out} = s) do
+      def handle_cast({:publish, exchange, routing_key, payload, opts}, %{} = s) do
         Logger.debug "Channel Publish Message: #{inspect payload}"
         Logger.debug "Options: #{inspect opts}"
-        Basic.publish channel_out, exchange, routing_key, payload, opts
+        Fireworks.publish exchange, routing_key, payload, opts
         {:noreply, s}
       end
 
@@ -161,7 +150,9 @@ defmodule Fireworks.Channel do
         {:noreply, %{s | tasks: remaining_tasks}}
       end
 
-      def handle_info({:DOWN, ref, :process, _, :normal}, s) do
+      def handle_info({:DOWN, ref, :process, pid, reason}, %{channel: %{pid: chan_pid}} = s) when pid == chan_pid do
+        Logger.debug "Channel Died for Reason: #{inspect reason}"
+        send(self, :connect)
         {:noreply, s}
       end
 
@@ -174,6 +165,10 @@ defmodule Fireworks.Channel do
           Basic.reject s.channel, meta.delivery_tag, requeue: true
         end)
         {:noreply, %{s | tasks: remaining_tasks}}
+      end
+
+      def handle_info({:DOWN, ref, :process, _, :normal}, s) do
+        {:noreply, s}
       end
 
       def handle_info({:DOWN, ref, :process, _, error}, s) do

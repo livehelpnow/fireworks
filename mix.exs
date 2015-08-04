@@ -26,7 +26,8 @@ defmodule Fireworks.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     [
-      {:amqp, github: "pma/amqp"}
+      {:amqp, github: "pma/amqp"},
+      {:poolboy, "~> 1.5.0"}
     ]
   end
 end
