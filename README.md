@@ -8,7 +8,7 @@ Fireworks requires information about the main connection to be defined in the ap
 ```elixir
 config :fireworks, :connection,
   host: "rabbitmq.local",
-  username: "guest", 
+  username: "guest",
   password: "guest",
   heartbeat: 30
 ```
@@ -24,7 +24,7 @@ config :my_app, MyApp.WorkQueue,
 
 Each fireworks module requires the following behavior methods to be declared
 ```elixir
-defmodule MyApp.WorkQueue do 
+defmodule MyApp.WorkQueue do
   use Fireworks.Channel, otp_app: :my_app
 
   require Logger
@@ -34,15 +34,15 @@ defmodule MyApp.WorkQueue do
     queue = "my_queue"
 
     Exchange.topic(channel, exchange, durable: true)
-    
+
     Queue.declare(
-      channel, 
-      error_queue, 
+      channel,
+      error_queue,
       durable: false
     )
 
     Queue.bind(channel, queue, exchange, routing_key: "#")
-    connect_consumers(queue)
+    queue
   end
 
   def consume(%{} = message, %{delivery_tag: tag}) do
