@@ -160,7 +160,7 @@ defmodule Fireworks.Channel do
         {:noreply, %{s | tasks: remaining_tasks}}
       end
 
-      def handle_info({:EXIT, pid, reason}, state) do
+      def handle_info({:EXIT, pid, reason}, s) do
         Logger.error "Exit Message From: #{inspect pid}, reason: #{inspect reason}"
         {:noreply, s}
       end
