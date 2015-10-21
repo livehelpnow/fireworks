@@ -1,6 +1,6 @@
 defmodule Fireworks.Channel do
-  @callback config(channel :: AMQP.Channel)
-  @callback consume(payload :: map, metadata :: map)
+  @callback config(channel :: AMQP.Channel) :: AMQP.Queue
+  @callback consume(payload :: map, metadata :: map) :: none
 
   defmacro __using__(opts) do
     quote do

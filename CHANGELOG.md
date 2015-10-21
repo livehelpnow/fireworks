@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.3.1
+  * Fixed issue with spec return types
+
 ## v0.3.0
   * Pooled connections
 

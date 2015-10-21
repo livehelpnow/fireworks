@@ -41,7 +41,7 @@ defmodule Fireworks.Connection do
     end
   end
 
-  def handle_info({:EXIT, pid, reason}, state) do
+  def handle_info({:EXIT, pid, reason}, s) do
     Logger.debug "Exit Message From: #{inspect pid}, reason: #{inspect reason}"
     {:noreply, s}
   end

@@ -3,9 +3,11 @@ defmodule Fireworks.Mixfile do
 
   def project do
     [app: :fireworks,
-     version: "0.3.0",
+     version: "0.3.1",
      elixir: "~> 1.0",
-     deps: deps]
+     deps: deps,
+     description: description,
+     package: package]
   end
 
   # Configuration for the OTP application
@@ -26,8 +28,20 @@ defmodule Fireworks.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     [
-      {:amqp, github: "pma/amqp"},
+      {:amqp, "~> 0.1.3"},
       {:poolboy, "~> 1.5.0"}
     ]
+  end
+
+  defp description do
+    """
+    Simple elixir work queue consumption for RabbitMQ
+    """
+  end
+
+  defp package do
+    [maintainers: ["Justin Schneck"],
+     licenses: ["Apache 2.0"],
+     links: %{"Github" => "https://github.com/mobileoverlord/fireworks"}]
   end
 end
