@@ -3,7 +3,7 @@ defmodule Fireworks.Mixfile do
 
   def project do
     [app: :fireworks,
-     version: "0.0.1",
+     version: "0.3.0",
      elixir: "~> 1.0",
      deps: deps]
   end

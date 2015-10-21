@@ -1,8 +1,6 @@
 defmodule Fireworks.Channel do
-  use Behaviour
-
-  defcallback config(channel :: AMQP.Channel)
-  defcallback consume(payload :: map, metadata :: map)
+  @callback config(channel :: AMQP.Channel)
+  @callback consume(payload :: map, metadata :: map)
 
   defmacro __using__(opts) do
     quote do
@@ -56,6 +54,7 @@ defmodule Fireworks.Channel do
       end
 
       def init(opts) do
+        Process.flag(:trap_exit, true)
         send(self, :connect)
         {:ok, %{
           channel: nil,
@@ -86,8 +85,19 @@ defmodule Fireworks.Channel do
         end
       end
 
+      def handle_cast({:ack, tag}, %{state: :disconnected} = s) do
+        #Basic.ack channel, tag
+        #The channel died, don't ack
+        {:noreply, s}
+      end
+
       def handle_cast({:ack, tag}, %{channel: channel} = s) do
         Basic.ack channel, tag
+        {:noreply, s}
+      end
+
+      def handle_cast({:reject, tag, opts}, %{state: :disconnected} = s) do
+        #Basic.reject channel, tag, opts
         {:noreply, s}
       end
 
@@ -150,10 +160,15 @@ defmodule Fireworks.Channel do
         {:noreply, %{s | tasks: remaining_tasks}}
       end
 
+      def handle_info({:EXIT, pid, reason}, state) do
+        Logger.error "Exit Message From: #{inspect pid}, reason: #{inspect reason}"
+        {:noreply, s}
+      end
+
       def handle_info({:DOWN, ref, :process, pid, reason}, %{channel: %{pid: chan_pid}} = s) when pid == chan_pid do
         Logger.debug "Channel Died for Reason: #{inspect reason}"
         send(self, :connect)
-        {:noreply, s}
+        {:noreply, %{s | status: :disconnected}}
       end
 
       def handle_info({:DOWN, ref, :process, _, {:timeout, info}}, s) do
@@ -165,10 +180,6 @@ defmodule Fireworks.Channel do
           Basic.reject s.channel, meta.delivery_tag, requeue: true
         end)
         {:noreply, %{s | tasks: remaining_tasks}}
-      end
-
-      def handle_info({:DOWN, ref, :process, _, :normal}, s) do
-        {:noreply, s}
       end
 
       def handle_info({:DOWN, ref, :process, _, error}, s) do

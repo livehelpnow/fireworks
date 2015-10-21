@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.3.0
+  * Pooled connections
+
 ## v0.2.0
   * Changed underlying connecton and registration scheme
   * Stability!
