@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.3.3
+  * Add poolboy to application list
+
 ## v0.3.2
   * Channel state was not being set on EXIT
 

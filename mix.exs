@@ -3,7 +3,7 @@ defmodule Fireworks.Mixfile do
 
   def project do
     [app: :fireworks,
-     version: "0.3.2",
+     version: "0.3.3",
      elixir: "~> 1.0",
      deps: deps,
      description: description,
@@ -14,7 +14,7 @@ defmodule Fireworks.Mixfile do
   #
   # Type `mix help compile.app` for more information
   def application do
-    [applications: [:amqp, :logger], mod: {Fireworks, []}]
+    [applications: [:amqp, :logger, :poolboy], mod: {Fireworks, []}]
   end
 
   # Dependencies can be Hex packages:
