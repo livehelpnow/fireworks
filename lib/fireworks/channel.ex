@@ -182,6 +182,10 @@ defmodule Fireworks.Channel do
         {:noreply, %{s | tasks: remaining_tasks}}
       end
 
+      def handle_info({:DOWN, ref, :process, _, :normal}, s) do
+        {:noreply, s}
+      end
+
       def handle_info({:DOWN, ref, :process, _, error}, s) do
         Logger.error "Task handled error error: #{inspect error}"
         Logger.debug "Ref: #{inspect ref}"
