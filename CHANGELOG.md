@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.3.4
+  * Handle :normal shutdown for Task
+
 ## v0.3.3
   * Add poolboy to application list
 
