@@ -7,7 +7,6 @@ defmodule Fireworks.Connection do
   @reconnect_after_ms 5_000
 
   def start_link(opts) do
-    Logger.debug "Connection Opts: #{inspect opts}"
     GenServer.start_link(__MODULE__, opts)
   end
 
@@ -32,7 +31,6 @@ defmodule Fireworks.Connection do
   def handle_info(:connect, s) do
     case Connection.open(s.opts) do
       {:ok, conn} ->
-        Logger.debug "Connected"
         Process.monitor(conn.pid)
         {:noreply, %{s | conn: conn, status: :connected}}
       {:error, reason} ->
@@ -42,7 +40,7 @@ defmodule Fireworks.Connection do
   end
 
   def handle_info({:EXIT, pid, reason}, s) do
-    Logger.debug "Exit Message From: #{inspect pid}, reason: #{inspect reason}"
+    #Logger.debug "Exit Message From: #{inspect pid}, reason: #{inspect reason}"
     {:noreply, s}
   end
 

@@ -2,10 +2,12 @@ defmodule Fireworks do
   use Supervisor
   use AMQP
   require Logger
-  @pool_size 5
 
+  @pool_size 5
   @conn_pool_name Fireworks.ConnPool
   @pub_pool_name  Fireworks.PubPool
+
+
 
   # See http://elixir-lang.org/docs/stable/elixir/Application.html
   # for more information on OTP Applications
@@ -14,7 +16,6 @@ defmodule Fireworks do
   end
 
   def start_link do
-    Logger.debug "Fireworks Start"
     opts = Application.get_env(:fireworks, :connection) || []
     Supervisor.start_link(__MODULE__, opts, name: Fireworks.Supervisor)
   end
@@ -68,10 +69,15 @@ defmodule Fireworks do
 
   defp get_chan(pool_name, retry_count, max_retry_count) do
     case :poolboy.transaction(pool_name, &GenServer.call(&1, :chan)) do
-      {:ok, chan}      -> {:ok, chan}
-      {:error, _reason} when retry_count < max_retry_count ->
+      {:ok, chan}      ->
+        IO.puts "Got channel"
+        {:ok, chan}
+      {:error, reason} when retry_count < max_retry_count ->
+        IO.puts "Error getting channel #{inspect reason}"
         get_chan(pool_name, retry_count + 1, max_retry_count)
-      {:error, reason} -> {:error, reason}
+      {:error, reason} ->
+        IO.puts "Error getting channel Done"
+        {:error, reason}
     end
   end
 

@@ -77,7 +77,7 @@ defmodule Fireworks.Channel do
             {:ok, chan, consumer_tag}
           end) do
           {:ok, chan, consumer_tag} ->
-            Logger.debug "Connected Channel: #{inspect s.opts}"
+            #Logger.debug "Connected Channel: #{inspect s.opts}"
             {:noreply, %{s | channel: chan, consumer_tag: consumer_tag, status: :connected}}
           {:error, :disconnected} ->
             :timer.send_after(@reconnect_after_ms, :connect)
@@ -102,45 +102,45 @@ defmodule Fireworks.Channel do
       end
 
       def handle_cast({:reject, tag, opts}, %{channel: channel} = s) do
-        Logger.debug "Channel Reject Message: #{inspect tag}"
-        Logger.debug "Options: #{inspect opts}"
+        #Logger.debug "Channel Reject Message: #{inspect tag}"
+        #Logger.debug "Options: #{inspect opts}"
         Basic.reject channel, tag, opts
         {:noreply, s}
       end
 
       def handle_cast({:publish, exchange, routing_key, payload, opts}, %{} = s) do
-        Logger.debug "Channel Publish Message: #{inspect payload}"
-        Logger.debug "Options: #{inspect opts}"
+        #Logger.debug "Channel Publish Message: #{inspect payload}"
+        #Logger.debug "Options: #{inspect opts}"
         Fireworks.publish exchange, routing_key, payload, opts
         {:noreply, s}
       end
 
       # Confirmation sent by the broker after registering this process as a consumer
       def handle_info({:basic_consume_ok, %{consumer_tag: consumer_tag}}, s) do
-        Logger.debug "Consumer Registered: #{inspect consumer_tag}"
+        #Logger.debug "Consumer Registered: #{inspect consumer_tag}"
         {:noreply, s}
       end
 
       # Sent by the broker when the consumer is unexpectedly cancelled (such as after a queue deletion)
       def handle_info({:basic_cancel, %{consumer_tag: consumer_tag}}, s) do
-        Logger.error "Basic Cancel Called on Channel #{inspect __MODULE__}"
+        #Logger.error "Basic Cancel Called on Channel #{inspect __MODULE__}"
         {:stop, :normal, %{s | state: :disconnected}}
       end
 
       # Confirmation sent by the broker to the consumer process after a Basic.cancel
       def handle_info({:basic_cancel_ok, %{consumer_tag: consumer_tag}}, s) do
-        Logger.error "Basic Cancel OK Called on Channel #{inspect __MODULE__}"
+        #Logger.error "Basic Cancel OK Called on Channel #{inspect __MODULE__}"
         {:stop, :normal, %{s | state: :disconnected}}
       end
 
       def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered} = meta}, %{channel: channel} = s) do
         # Handle Message Distribution
-        Logger.debug "AMQP Delivered Payload: #{inspect payload}"
+        #Logger.debug "AMQP Delivered Payload: #{inspect payload}"
         payload = payload
           |> Poison.decode!(keys: :atoms)
 
         task = Task.async(fn -> consume(payload, meta) end)
-        Logger.debug "Task: #{inspect task}"
+        #Logger.debug "Task: #{inspect task}"
 
         Process.unlink(task.pid)
         timer_ref = :erlang.start_timer(@task_timeout, self(), {:task_timeout, task, tag, redelivered, payload})
@@ -149,10 +149,10 @@ defmodule Fireworks.Channel do
       end
 
       def handle_info({task, _}, %{tasks: tasks} = s) when is_reference(task) do
-        Logger.debug "Task Finished: #{inspect task}"
-        Logger.debug "Tasks: #{inspect tasks}"
+        #Logger.debug "Task Finished: #{inspect task}"
+        #Logger.debug "Tasks: #{inspect tasks}"
         {finished_tasks, remaining_tasks} = Enum.partition(tasks, fn({%{ref: ref}, _, _}) -> ref == task end)
-        Logger.debug "Finished Tasks: #{inspect finished_tasks}"
+        #Logger.debug "Finished Tasks: #{inspect finished_tasks}"
         Enum.each(finished_tasks, fn({_, timer_ref, _}) ->
           :erlang.cancel_timer(timer_ref)
         end)
@@ -161,19 +161,19 @@ defmodule Fireworks.Channel do
       end
 
       def handle_info({:EXIT, pid, reason}, s) do
-        Logger.error "Exit Message From: #{inspect pid}, reason: #{inspect reason}"
+        #Logger.error "Exit Message From: #{inspect pid}, reason: #{inspect reason}"
         {:noreply, s}
       end
 
       def handle_info({:DOWN, ref, :process, pid, reason}, %{channel: %{pid: chan_pid}} = s) when pid == chan_pid do
-        Logger.debug "Channel Died for Reason: #{inspect reason}"
+        #Logger.debug "Channel Died for Reason: #{inspect reason}"
         send(self, :connect)
         {:noreply, %{s | status: :disconnected}}
       end
 
       def handle_info({:DOWN, ref, :process, _, {:timeout, info}}, s) do
-        Logger.error "Database timeout"
-        Logger.debug "Ref: #{inspect ref}"
+        #Logger.error "Database timeout"
+        #Logger.debug "Ref: #{inspect ref}"
         {error_tasks, remaining_tasks} = Enum.partition(s.tasks, fn({%{ref: task_ref}, timer_ref, meta}) -> task_ref == ref end)
         Enum.each(error_tasks, fn({task, timer_ref, meta}) ->
           :erlang.cancel_timer(timer_ref)
@@ -187,8 +187,8 @@ defmodule Fireworks.Channel do
       end
 
       def handle_info({:DOWN, ref, :process, _, error}, s) do
-        Logger.error "Task handled error error: #{inspect error}"
-        Logger.debug "Ref: #{inspect ref}"
+        #Logger.error "Task handled error error: #{inspect error}"
+        #Logger.debug "Ref: #{inspect ref}"
         {error_tasks, remaining_tasks} = Enum.partition(s.tasks, fn({%{ref: task_ref}, timer_ref, meta}) -> task_ref == ref end)
         Enum.each(error_tasks, fn({task, timer_ref, meta}) ->
           :erlang.cancel_timer(timer_ref)
