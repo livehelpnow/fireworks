@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.4.0
+  * Added `Fireworks.Logger` backend for rabbit logging. 
+
 ## v0.3.4
   * Handle :normal shutdown for Task
 

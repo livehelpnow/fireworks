@@ -56,6 +56,17 @@ end
 
 If a connection to the rabbit node is lost, fireworks will automatically attempt a reconnection to the node.
 
+## Logging
+Fireworks has a Logger backend which can be used to send logs to an exchange on rabbit using fireworks publisher. To use this backend you must configure `:logger`
+
+In your config.exs
+```elixir
+config :logger,
+  backends: [:console, {Fireworks.Logger, otp_app: :my_app, exchange: "logger"}]
+```
+
+
+
 ## Contributing
 
 The easiest way to test and contribute to the fireworks library is to develop and test the features through an example app that is leveraging the Fireworks behaviour. A test suite is in the works for this framework.
