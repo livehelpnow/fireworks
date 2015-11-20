@@ -66,7 +66,6 @@ config :logger,
 ```
 
 
-
 ## Contributing
 
 The easiest way to test and contribute to the fireworks library is to develop and test the features through an example app that is leveraging the Fireworks behaviour. A test suite is in the works for this framework.

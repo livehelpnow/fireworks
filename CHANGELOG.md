@@ -1,7 +1,12 @@
 # Changelog
 
+## v0.5.0
+  * Remove direct references to Poison. json_library / json_opts should be passed in config
+    If these options are passed, it will decide / encode using the json lib and options
+    Otherwise, the message will be transmitted as a plain binary
+
 ## v0.4.0
-  * Added `Fireworks.Logger` backend for rabbit logging. 
+  * Added `Fireworks.Logger` backend for rabbit logging.
 
 ## v0.3.4
   * Handle :normal shutdown for Task
@@ -19,7 +24,7 @@
   * Pooled connections
 
 ## v0.2.0
-  * Changed underlying connecton and registration scheme
+  * Changed underlying connection and registration scheme
   * Stability!
 
 ## v0.1.0

@@ -27,6 +27,7 @@ defmodule Fireworks.Logger do
   defp configure(opts) do
     IO.inspect opts
     name = Keyword.get(opts, :otp_app) || raise "Must supply Fireworks.Logger otp_app"
+    json_library = Keyword.get(opts, :json_library)
     env = Application.get_env(:logger, name, [])
     opts = Keyword.merge(env, opts)
     Application.put_env(:logger, name, opts)
@@ -36,11 +37,16 @@ defmodule Fireworks.Logger do
     format   = Keyword.get(opts, :format, @default_format) |> Logger.Formatter.compile
     exchange = Keyword.get(opts, :exchange, "")
 
-    %{name: name, format: format, level: level, metadata: metadata, exchange: exchange}
+    %{name: name, format: format, level: level, metadata: metadata, exchange: exchange, json_library: json_library}
   end
 
   defp log_event(level, msg, ts, md, state) do
     IO.puts "Loging: #{inspect to_string(level)}, #{inspect msg}"
+    if state.json_library != nil do
+      msg = %{message: msg, level: level, node: node}
+      |> state.json_library.encode!
+    end
+    IO.puts "MSG: #{inspect msg}"
     Fireworks.publish(state.exchange, Atom.to_string(level), msg, [])
     {:ok, state}
   end

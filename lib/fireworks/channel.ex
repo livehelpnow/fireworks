@@ -56,11 +56,15 @@ defmodule Fireworks.Channel do
       def init(opts) do
         Process.flag(:trap_exit, true)
         send(self, :connect)
+        json_library = opts[:json_library] || nil
+        json_opts = opts[:json_opts] || []
         {:ok, %{
           channel: nil,
           consumer_tag: nil,
           tasks: [],
           opts: opts,
+          json_library: json_library,
+          json_opts: json_opts,
           status: :disconnected
         }}
       end
@@ -136,8 +140,10 @@ defmodule Fireworks.Channel do
       def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered} = meta}, %{channel: channel} = s) do
         # Handle Message Distribution
         #Logger.debug "AMQP Delivered Payload: #{inspect payload}"
-        payload = payload
-          |> Poison.decode!(keys: :atoms)
+        if s.json_library != nil do
+          payload = payload
+            |> s.json_library.decode!(s.json_opts)
+        end
 
         task = Task.async(fn -> consume(payload, meta) end)
         #Logger.debug "Task: #{inspect task}"
