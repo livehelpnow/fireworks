@@ -56,8 +56,13 @@ defmodule Fireworks.Channel do
       def init(opts) do
         Process.flag(:trap_exit, true)
         send(self, :connect)
-        json_library = opts[:json_library] || nil
-        json_opts = opts[:json_opts] || []
+        
+        app_json_library = Application.get_env(:fireworks, :json_library)
+        app_json_opts = Application.get_env(:fireworks, :json_opts)
+
+        json_library = opts[:json_library] || app_json_library || nil
+        json_opts = opts[:json_opts] || app_json_opts || []
+
         {:ok, %{
           channel: nil,
           consumer_tag: nil,
