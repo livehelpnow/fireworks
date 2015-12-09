@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.5.1
+  * Allow global json options to be defined.
+
 ## v0.5.0
   * Remove direct references to Poison. json_library / json_opts should be passed in config
     If these options are passed, it will decide / encode using the json lib and options
