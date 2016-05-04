@@ -145,9 +145,17 @@ defmodule Fireworks.Channel do
       def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered} = meta}, %{channel: channel} = s) do
         # Handle Message Distribution
         #Logger.debug "AMQP Delivered Payload: #{inspect payload}"
+        payload = 
         if s.json_library != nil do
-          payload = payload
-            |> s.json_library.decode!(s.json_opts)
+          try do
+            payload
+              |> s.json_library.decode!(s.json_opts)
+          rescue
+            any ->
+              payload
+          end
+        else
+          payload
         end
 
         task = Task.async(fn -> consume(payload, meta) end)
