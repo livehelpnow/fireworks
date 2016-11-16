@@ -10,7 +10,7 @@ defmodule Fireworks.Logger do
   end
 
   def handle_call({:configure, options}, %{name: name}) do
-    {:ok, :ok, configure(Keyword.put_name(options, :otp_name, name))}
+    {:ok, :ok, configure(Keyword.put(options, :otp_name, name))}
   end
 
   def handle_event({_level, gl, _event}, state) when node(gl) != node() do
