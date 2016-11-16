@@ -33,13 +33,13 @@ defmodule Fireworks.Connection do
       {:ok, conn} ->
         Process.monitor(conn.pid)
         {:noreply, %{s | conn: conn, status: :connected}}
-      {:error, reason} ->
+      {:error, _reason} ->
         :timer.send_after(@reconnect_after_ms, :connect)
         {:noreply, s}
     end
   end
 
-  def handle_info({:EXIT, pid, reason}, s) do
+  def handle_info({:EXIT, _pid, _reason}, s) do
     #Logger.debug "Exit Message From: #{inspect pid}, reason: #{inspect reason}"
     {:noreply, s}
   end
