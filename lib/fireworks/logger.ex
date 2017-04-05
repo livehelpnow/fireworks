@@ -43,7 +43,7 @@ defmodule Fireworks.Logger do
   defp log_event(level, msg, ts, md, state) do
     IO.puts "Loging: #{inspect to_string(level)}, #{inspect msg}"
     if state.json_library != nil do
-      msg = %{message: msg, level: level, node: node}
+      msg = %{message: msg, level: level, node: node()}
       |> state.json_library.encode!
     end
     IO.puts "MSG: #{inspect msg}"

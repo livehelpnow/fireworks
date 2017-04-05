@@ -12,7 +12,7 @@ defmodule Fireworks.Channel do
       alias AMQP.Confirm
 
       unquote(config(opts))
-      unquote(server)
+      unquote(server())
     end
   end
 

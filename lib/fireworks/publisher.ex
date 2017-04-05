@@ -18,7 +18,7 @@ defmodule Fireworks.Publisher do
   @doc false
   def init([conn_pool_name]) do
     Process.flag(:trap_exit, true)
-    send(self, :connect)
+    send(self(), :connect)
     {:ok, %{status: :disconnected, chan: nil, conn_pool_name: conn_pool_name}}
   end
 
