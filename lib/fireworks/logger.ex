@@ -10,7 +10,7 @@ defmodule Fireworks.Logger do
   end
 
   def handle_call({:configure, options}, %{name: name}) do
-    {:ok, :ok, configure(Keyword.put_name(options, :otp_name, name))}
+    {:ok, :ok, configure(Keyword.put(options, :otp_name, name))}
   end
 
   def handle_event({_level, gl, _event}, state) when node(gl) != node() do
@@ -40,11 +40,11 @@ defmodule Fireworks.Logger do
     %{name: name, format: format, level: level, metadata: metadata, exchange: exchange, json_library: json_library}
   end
 
-  defp log_event(level, msg, ts, md, state) do
+  defp log_event(level, msg, _ts, _md, state) do
     IO.puts "Loging: #{inspect to_string(level)}, #{inspect msg}"
-    if state.json_library != nil do
-      msg = %{message: msg, level: level, node: node()}
-      |> state.json_library.encode!
+    msg = case state.json_library do
+      nil -> msg
+      json_library -> %{message: msg, level: level, node: node()} |> json_library.encode!
     end
     IO.puts "MSG: #{inspect msg}"
     Fireworks.publish(state.exchange, Atom.to_string(level), msg, [])
