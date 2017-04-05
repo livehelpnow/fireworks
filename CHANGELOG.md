@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.5.2
+  * Merged PRs to update deps and remove warnings
+
 ## v0.5.1
   * Allow global json options to be defined.
 

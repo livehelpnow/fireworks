@@ -3,7 +3,7 @@ defmodule Fireworks.Mixfile do
 
   def project do
     [app: :fireworks,
-     version: "0.5.1",
+     version: "0.5.2",
      elixir: "~> 1.0",
      deps: deps(),
      description: description(),
@@ -40,8 +40,8 @@ defmodule Fireworks.Mixfile do
   end
 
   defp package do
-    [maintainers: ["Justin Schneck"],
+    [maintainers: ["Eric Witchin"],
      licenses: ["Apache 2.0"],
-     links: %{"Github" => "https://github.com/mobileoverlord/fireworks"}]
+     links: %{"Github" => "https://github.com/livehelpnow/fireworks"}]
   end
 end
