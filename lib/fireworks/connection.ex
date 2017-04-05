@@ -12,7 +12,7 @@ defmodule Fireworks.Connection do
 
   def init([opts]) do
     Process.flag(:trap_exit, true)
-    send(self, :connect)
+    send(self(), :connect)
     {:ok, %{
       conn: nil,
       opts: opts,

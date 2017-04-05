@@ -42,13 +42,12 @@ defmodule Fireworks.Logger do
 
   defp log_event(level, msg, _ts, _md, state) do
     IO.puts "Loging: #{inspect to_string(level)}, #{inspect msg}"
-    msg =
-      case state.json_library do
-        nil -> msg
-        _ ->
-          %{message: msg, level: level, node: node}
-          |> state.json_library.encode!
-      end
+
+    msg = case state.json_library do
+      nil -> msg
+      json_library -> %{message: msg, level: level, node: node()} |> json_library.encode!
+    end
+    
     IO.puts "MSG: #{inspect msg}"
     Fireworks.publish(state.exchange, Atom.to_string(level), msg, [])
     {:ok, state}

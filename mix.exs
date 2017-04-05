@@ -5,9 +5,9 @@ defmodule Fireworks.Mixfile do
     [app: :fireworks,
      version: "0.5.1",
      elixir: "~> 1.0",
-     deps: deps,
-     description: description,
-     package: package]
+     deps: deps(),
+     description: description(),
+     package: package()]
   end
 
   # Configuration for the OTP application
@@ -28,8 +28,8 @@ defmodule Fireworks.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     [
-      {:amqp, "~> 0.1.3"},
-      {:poolboy, "~> 1.5.0"}
+      {:amqp, "~> 0.2.0"},
+      {:poolboy, "~> 1.5.1"}
     ]
   end
 
