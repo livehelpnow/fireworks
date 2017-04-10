@@ -1,7 +1,7 @@
 # TODO how do we handle graceful shutdown? We need to send a Basic.cancel and wait for tasks to finish before actually terminating
 defmodule Fireworks.Consumer do
   use GenServer
-  alias AMQP.{Basic,Channel,Confirm,Connection,Exchange,Queue}
+  alias AMQP.{Basic,Channel}
   require Logger
 
   @default_opts %{
@@ -37,17 +37,6 @@ defmodule Fireworks.Consumer do
     {:ok, state}
   end
 
-  def handle_info(:connect, s) do
-    Logger.debug("attempting to connect to #{s.opts.queue}")
-    case attempt_to_connect(s) do
-      {:ok, chan, consumer_tag} ->
-        {:noreply, %{s | channel: chan, consumer_tag: consumer_tag, status: :connected}}
-      {:error, :disconnected} ->
-        :timer.send_after(s.opts.reconnect_after_ms, :connect)
-        {:noreply, %{s | channel: nil, consumer_tag: nil, status: :disconnected}}
-    end
-  end
-
   def handle_call({:ack, %{channel: chan, delivery_tag: tag}}, _from, %{channel: chan} = s) do
     response = Basic.ack(chan, tag)
     {:reply, response, s}
@@ -64,18 +53,29 @@ defmodule Fireworks.Consumer do
     {:reply, {:error, "no longer connected to that channel"}, s}
   end
 
+  def handle_info(:connect, s) do
+    Logger.debug("attempting to connect to #{s.opts.queue}")
+    case attempt_to_connect(s) do
+      {:ok, chan, consumer_tag} ->
+        {:noreply, %{s | channel: chan, consumer_tag: consumer_tag, status: :connected}}
+      {:error, :disconnected} ->
+        :timer.send_after(s.opts.reconnect_after_ms, :connect)
+        {:noreply, %{s | channel: nil, consumer_tag: nil, status: :disconnected}}
+    end
+  end
+
   # Confirmation sent by the broker after registering this process as a consumer
-  def handle_info({:basic_consume_ok, %{consumer_tag: consumer_tag}}, s) do
+  def handle_info({:basic_consume_ok, %{consumer_tag: _consumer_tag}}, s) do
     {:noreply, s}
   end
 
   # Sent by the broker when the consumer is unexpectedly cancelled (such as after a queue deletion)
-  def handle_info({:basic_cancel, %{consumer_tag: consumer_tag}}, s) do
+  def handle_info({:basic_cancel, %{consumer_tag: _consumer_tag}}, s) do
     {:stop, :normal, %{s | state: :disconnected, channel: nil}}
   end
 
   # Confirmation sent by the broker to the consumer process after a Basic.cancel
-  def handle_info({:basic_cancel_ok, %{consumer_tag: consumer_tag}}, s) do
+  def handle_info({:basic_cancel_ok, %{consumer_tag: _consumer_tag}}, s) do
     {:stop, :normal, %{s | state: :disconnected, channel: nil}}
   end
 
@@ -103,18 +103,18 @@ defmodule Fireworks.Consumer do
     {:noreply, s}
   end
 
-  def handle_info({:DOWN, ref, :process, pid, reason}, %{channel: %{pid: chan_pid}} = s) when pid == chan_pid do
-    send(self, :connect)
+  def handle_info({:DOWN, _ref, :process, chan_pid, _reason}, %{channel: %{pid: chan_pid}} = s) do
+    send(self(), :connect)
     {:noreply, %{s | status: :disconnected, channel: nil}}
   end
 
-  def handle_info({:DOWN, ref, :process, _, :normal}, s) do
+  def handle_info({:DOWN, _ref, :process, _, :normal}, s) do
     {:noreply, s}
   end
 
-  def handle_info({:DOWN, ref, :process, _, error}, s) do
-    {error_tasks, remaining_tasks} = Enum.partition(s.tasks, fn({%{ref: task_ref}, timer_ref, meta}) -> task_ref == ref end)
-    Enum.each(error_tasks, fn({task, timer_ref, meta}) ->
+  def handle_info({:DOWN, ref, :process, _, _error}, s) do
+    {error_tasks, remaining_tasks} = Enum.partition(s.tasks, fn({%{ref: task_ref}, _timer_ref, _meta}) -> task_ref == ref end)
+    Enum.each(error_tasks, fn({_task, timer_ref, meta}) ->
       :erlang.cancel_timer(timer_ref)
       # TODO make the `requeue` option configurable?
       Basic.reject s.channel, meta.delivery_tag, requeue: false
@@ -122,7 +122,7 @@ defmodule Fireworks.Consumer do
     {:noreply, %{s | tasks: remaining_tasks}}
   end
 
-  def handle_info({:timeout, timer_ref, {:task_timeout, %{pid: task_pid, ref: task_ref}, tag, redelivered, payload}}, %{channel: channel} = s) do
+  def handle_info({:timeout, _timer_ref, {:task_timeout, %{pid: task_pid}, _tag, _redelivered, _payload}}, s) do
     Process.exit(task_pid, :task_timeout)
     {:noreply, s}
   end
