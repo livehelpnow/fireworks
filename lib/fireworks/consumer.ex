@@ -71,11 +71,13 @@ defmodule Fireworks.Consumer do
 
   # Sent by the broker when the consumer is unexpectedly cancelled (such as after a queue deletion)
   def handle_info({:basic_cancel, %{consumer_tag: _consumer_tag}}, s) do
+    Logger.error("the #{s.opts.queue} consumer was cancelled by the broker (basic_cancel)")
     {:stop, :normal, %{s | state: :disconnected, channel: nil}}
   end
 
   # Confirmation sent by the broker to the consumer process after a Basic.cancel
   def handle_info({:basic_cancel_ok, %{consumer_tag: _consumer_tag}}, s) do
+    Logger.error("the #{s.opts.queue} consumer was cancelled by the broker (basic_cancel_ok)")
     {:stop, :normal, %{s | state: :disconnected, channel: nil}}
   end
 
@@ -99,11 +101,12 @@ defmodule Fireworks.Consumer do
   end
 
   def handle_info({:EXIT, pid, reason}, s) do
-    Logger.debug("got EXIT from #{inspect pid} (#{inspect reason})")
+    Logger.error("got EXIT from #{inspect pid} (#{inspect reason})")
     {:noreply, s}
   end
 
-  def handle_info({:DOWN, _ref, :process, chan_pid, _reason}, %{channel: %{pid: chan_pid}} = s) do
+  def handle_info({:DOWN, _ref, :process, chan_pid, reason}, %{channel: %{pid: chan_pid}} = s) do
+    Logger.error("channel for #{s.opts.queue} died: #{inspect reason}")
     send(self(), :connect)
     {:noreply, %{s | status: :disconnected, channel: nil}}
   end
@@ -117,7 +120,8 @@ defmodule Fireworks.Consumer do
     Enum.each(error_tasks, fn({_task, timer_ref, meta}) ->
       :erlang.cancel_timer(timer_ref)
       # TODO make the `requeue` option configurable?
-      Basic.reject s.channel, meta.delivery_tag, requeue: false
+      # TODO maybe this message was already ACK or REJECTED? If so rabbit will close our channel for trying to REJECT again
+      handle_call({:reject, meta, requeue: false}, :not_a_real_client, s)
     end)
     {:noreply, %{s | tasks: remaining_tasks}}
   end
