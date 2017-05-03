@@ -29,7 +29,8 @@ defmodule Fireworks.Connection do
   end
 
   def handle_info(:connect, s) do
-    case Connection.open(s.opts) do
+    opts = connection_options(s.opts)
+    case Connection.open(opts) do
       {:ok, conn} ->
         Process.monitor(conn.pid)
         {:noreply, %{s | conn: conn, status: :connected}}
@@ -61,4 +62,12 @@ defmodule Fireworks.Connection do
     :ok
   end
 
+  defp connection_options(opts) do
+    case Keyword.get(opts, :hosts) do
+      nil -> opts
+      hosts when is_list(hosts) ->
+        host = Enum.random(hosts)
+        opts |> Keyword.delete(:hosts) |> Keyword.put(:host, host)
+    end
+  end
 end
