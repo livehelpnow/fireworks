@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.0
+  * Configure multiple hosts via config
+  * Introduced a Fireworks Consumer pattern
+
 ## v0.5.2
   * Merged PRs to update deps and remove warnings
 

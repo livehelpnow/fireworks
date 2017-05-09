@@ -8,6 +8,7 @@ Fireworks requires information about the main connection to be defined in the ap
 ```elixir
 config :fireworks, :connection,
   host: "rabbitmq.local",
+  #hosts: ["rabbitmq1.local", "rabbitmq2.local"],
   username: "guest",
   password: "guest",
   heartbeat: 30
