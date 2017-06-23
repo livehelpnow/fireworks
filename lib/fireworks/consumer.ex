@@ -72,13 +72,13 @@ defmodule Fireworks.Consumer do
   # Sent by the broker when the consumer is unexpectedly cancelled (such as after a queue deletion)
   def handle_info({:basic_cancel, %{consumer_tag: _consumer_tag}}, s) do
     Logger.error("the #{s.opts.queue} consumer was cancelled by the broker (basic_cancel)")
-    {:stop, :normal, %{s | state: :disconnected, channel: nil}}
+    {:stop, :normal, %{s | status: :disconnected, channel: nil}}
   end
 
   # Confirmation sent by the broker to the consumer process after a Basic.cancel
   def handle_info({:basic_cancel_ok, %{consumer_tag: _consumer_tag}}, s) do
     Logger.error("the #{s.opts.queue} consumer was cancelled by the broker (basic_cancel_ok)")
-    {:stop, :normal, %{s | state: :disconnected, channel: nil}}
+    {:stop, :normal, %{s | status: :disconnected, channel: nil}}
   end
 
   def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered} = meta}, %{channel: channel} = s) do
