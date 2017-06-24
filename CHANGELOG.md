@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.6.1
+  * fixed typo in consumer (PR #7)
+
 ## v0.6.0
   * Configure multiple hosts via config
   * Introduced a Fireworks Consumer pattern
