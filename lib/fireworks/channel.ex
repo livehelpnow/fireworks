@@ -33,12 +33,12 @@ defmodule Fireworks.Channel do
       @conn_conf var!(config)
       @prefetch_count 10
 
-      def __connection_config__, do: @conn_conf
+      def __connection_config__(), do: @conn_conf
 
       require Logger
 
       def start_link() do
-        GenServer.start_link(__MODULE__, __connection_config__, name: __MODULE__)
+        GenServer.start_link(__MODULE__, __connection_config__(), name: __MODULE__)
       end
 
       def ack(tag) do
@@ -55,7 +55,7 @@ defmodule Fireworks.Channel do
 
       def init(opts) do
         Process.flag(:trap_exit, true)
-        send(self, :connect)
+        send(self(), :connect)
         
         app_json_library = Application.get_env(:fireworks, :json_library)
         app_json_opts = Application.get_env(:fireworks, :json_opts)
@@ -180,7 +180,7 @@ defmodule Fireworks.Channel do
 
       def handle_info({:DOWN, ref, :process, pid, reason}, %{channel: %{pid: chan_pid}} = s) when pid == chan_pid do
         #Logger.debug "Channel Died for Reason: #{inspect reason}"
-        send(self, :connect)
+        send(self(), :connect)
         {:noreply, %{s | status: :disconnected}}
       end
 
