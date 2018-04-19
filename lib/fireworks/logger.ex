@@ -1,5 +1,5 @@
 defmodule Fireworks.Logger do
-  use GenEvent
+  #use GenEvent
   require Logger
 
   @default_format "$time $metadata[$level] $message\n"

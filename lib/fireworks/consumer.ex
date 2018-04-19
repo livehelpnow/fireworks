@@ -92,7 +92,7 @@ defmodule Fireworks.Consumer do
   end
 
   def handle_info({task, _}, %{tasks: tasks} = s) when is_reference(task) do
-    {finished_tasks, remaining_tasks} = Enum.partition(tasks, fn({%{ref: ref}, _, _}) -> ref == task end)
+    {finished_tasks, remaining_tasks} = Enum.split_with(tasks, fn({%{ref: ref}, _, _}) -> ref == task end)
     Enum.each(finished_tasks, fn({_, timer_ref, _}) ->
       :erlang.cancel_timer(timer_ref)
     end)
@@ -116,7 +116,7 @@ defmodule Fireworks.Consumer do
   end
 
   def handle_info({:DOWN, ref, :process, _, _error}, s) do
-    {error_tasks, remaining_tasks} = Enum.partition(s.tasks, fn({%{ref: task_ref}, _timer_ref, _meta}) -> task_ref == ref end)
+    {error_tasks, remaining_tasks} = Enum.split_with(s.tasks, fn({%{ref: task_ref}, _timer_ref, _meta}) -> task_ref == ref end)
     Enum.each(error_tasks, fn({_task, timer_ref, meta}) ->
       :erlang.cancel_timer(timer_ref)
       # TODO make the `requeue` option configurable?

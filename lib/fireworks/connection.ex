@@ -46,7 +46,7 @@ defmodule Fireworks.Connection do
   end
 
   def handle_info({:DOWN, _ref, :process, _pid, _reason}, %{status: :connected} = state) do
-    Logger.error "lost RabbitMQ connection. Attempting to reconnect..."
+    Logger.error "lost RabbitMQ connection. Attempting to reconnect"
     :timer.send_after(@reconnect_after_ms, :connect)
     {:noreply, %{state | conn: nil, status: :disconnected}}
   end
