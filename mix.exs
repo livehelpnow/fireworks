@@ -3,7 +3,7 @@ defmodule Fireworks.Mixfile do
 
   def project do
     [app: :fireworks,
-     version: "0.7.0",
+     version: "0.7.1",
      elixir: "~> 1.0",
      deps: deps(),
      description: description(),
@@ -28,7 +28,7 @@ defmodule Fireworks.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     [
-      {:amqp, "~> 1.0"},
+      {:amqp, "~> 1.1"},
       {:poolboy, "~> 1.5.1"}
     ]
   end

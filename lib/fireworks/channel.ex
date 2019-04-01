@@ -164,7 +164,7 @@ defmodule Fireworks.Channel do
       def handle_info({task, _}, %{tasks: tasks} = s) when is_reference(task) do
         #Logger.debug "Task Finished: #{inspect task}"
         #Logger.debug "Tasks: #{inspect tasks}"
-        {finished_tasks, remaining_tasks} = Enum.partition(tasks, fn({%{ref: ref}, _, _}) -> ref == task end)
+        {finished_tasks, remaining_tasks} = Enum.split_with(tasks, fn({%{ref: ref}, _, _}) -> ref == task end)
         #Logger.debug "Finished Tasks: #{inspect finished_tasks}"
         Enum.each(finished_tasks, fn({_, timer_ref, _}) ->
           :erlang.cancel_timer(timer_ref)
@@ -187,7 +187,7 @@ defmodule Fireworks.Channel do
       def handle_info({:DOWN, ref, :process, _, {:timeout, info}}, s) do
         #Logger.error "Database timeout"
         #Logger.debug "Ref: #{inspect ref}"
-        {error_tasks, remaining_tasks} = Enum.partition(s.tasks, fn({%{ref: task_ref}, timer_ref, meta}) -> task_ref == ref end)
+        {error_tasks, remaining_tasks} = Enum.split_with(s.tasks, fn({%{ref: task_ref}, timer_ref, meta}) -> task_ref == ref end)
         Enum.each(error_tasks, fn({task, timer_ref, meta}) ->
           :erlang.cancel_timer(timer_ref)
           Basic.reject s.channel, meta.delivery_tag, requeue: true
@@ -202,7 +202,7 @@ defmodule Fireworks.Channel do
       def handle_info({:DOWN, ref, :process, _, error}, s) do
         #Logger.error "Task handled error error: #{inspect error}"
         #Logger.debug "Ref: #{inspect ref}"
-        {error_tasks, remaining_tasks} = Enum.partition(s.tasks, fn({%{ref: task_ref}, timer_ref, meta}) -> task_ref == ref end)
+        {error_tasks, remaining_tasks} = Enum.split_with(s.tasks, fn({%{ref: task_ref}, timer_ref, meta}) -> task_ref == ref end)
         Enum.each(error_tasks, fn({task, timer_ref, meta}) ->
           :erlang.cancel_timer(timer_ref)
           Basic.reject s.channel, meta.delivery_tag, requeue: false
