@@ -1,6 +1,6 @@
 defmodule Fireworks.Channel do
-  @callback config(channel :: AMQP.Channel) :: AMQP.Queue
-  @callback consume(payload :: map, metadata :: map) :: none
+  @callback config(channel :: AMQP.Channel.t()) :: String.t()
+  @callback consume(payload :: map, metadata :: map) :: any
 
   defmacro __using__(opts) do
     quote do
@@ -56,7 +56,7 @@ defmodule Fireworks.Channel do
       def init(opts) do
         Process.flag(:trap_exit, true)
         send(self(), :connect)
-        
+
         app_json_library = Application.get_env(:fireworks, :json_library)
         app_json_opts = Application.get_env(:fireworks, :json_opts)
 
