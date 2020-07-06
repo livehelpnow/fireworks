@@ -57,6 +57,15 @@ end
 
 If a connection to the rabbit node is lost, fireworks will automatically attempt a reconnection to the node.
 
+Optionally you can specify task timeout, default is 60000 miliseconds.
+
+```elixir
+defmodule MyApp.WorkQueue do
+  use Fireworks.Channel, [otp_app: :my_app, task_timeout: 1000]
+end
+```
+
+
 ## Logging
 Fireworks has a Logger backend which can be used to send logs to an exchange on rabbit using fireworks publisher. To use this backend you must configure `:logger`
 
