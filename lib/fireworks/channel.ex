@@ -19,6 +19,7 @@ defmodule Fireworks.Channel do
   defp config(opts) do
     quote do
       var!(otp_app) = unquote(opts)[:otp_app] || raise "channel expects :otp_app to be given"
+      var!(task_timeout) = unquote(opts)[:task_timeout] || 60_000
       var!(config) = Application.get_env(var!(otp_app), __MODULE__)
     end
   end
@@ -28,7 +29,7 @@ defmodule Fireworks.Channel do
       use GenServer
 
       @reconnect_after_ms 5_000
-      @task_timeout 60_000
+      @task_timeout var!(task_timeout)
       @behaviour Fireworks.Channel
       @conn_conf var!(config)
       @prefetch_count 10
