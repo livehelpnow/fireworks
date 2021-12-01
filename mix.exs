@@ -28,8 +28,8 @@ defmodule Fireworks.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     [
-      {:amqp, "~> 1.1"},
-      {:poolboy, "~> 1.5.1"}
+      {:amqp, "~> 3.0"},
+      {:poolboy, "~> 1.5.0"}
     ]
   end
 

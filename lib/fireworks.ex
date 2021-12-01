@@ -41,7 +41,11 @@ defmodule Fireworks do
       :poolboy.child_spec(@pub_pool_name, pub_pool_opts, @conn_pool_name),
       #worker(Fireworks.Server, [name, conn_pool_name, opts])
     ]
-    supervise children, strategy: :one_for_one
+
+
+    #supervise children, strategy: :one_for_one
+    Supervisor.init(children, strategy: :one_for_one)
+
   end
 
   def with_conn(pool_name, fun) when is_function(fun, 1) do
