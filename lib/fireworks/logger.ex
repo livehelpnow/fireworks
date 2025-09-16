@@ -47,8 +47,7 @@ defmodule Fireworks.Logger do
       nil -> msg
       json_library -> %{message: msg, level: level, node: node()} |> json_library.encode!
     end
-    
-    IO.puts "MSG: #{inspect msg}"
+
     Fireworks.publish(state.exchange, Atom.to_string(level), msg, [])
     {:ok, state}
   end
